@@ -1,20 +1,28 @@
 require 'rspec'
-
-def eventually(matcher)
-  @eventually ||= Eventually.new(matcher)
-end
+require 'timeout'
 
 class Eventually
-  def initialize(matcher)
+  def initialize(matcher, timeout: 10) # change to read config?
     @matcher = matcher
+    @timeout = timeout
   end
 
   def matches?(block)
-    5.times do # Replace this with a call to :run_until_success to get same behaviour as the rest of our DSL
-      @result = block.call
-      return true if @matcher.matches? @result
+    raise 'Actual should be wrapped in a block' unless block.respond_to? :call
+    begin
+      Timeout.timeout(@timeout) do
+        loop do
+          begin
+            @result = block.call
+            return true if @matcher.matches? @result
+          rescue
+            next
+          end
+        end
+      end
+    rescue Timeout::Error
+      return false
     end
-    false
   end
 
   def supports_block_expectations?

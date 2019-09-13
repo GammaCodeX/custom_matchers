@@ -22,7 +22,21 @@ describe :eventually do
   it 'Raises a custom error message when failing' do
     example = -> { expect{5}.to eventually be 3 }
 
-    expect(example).to raise_error('expected to eventually equal 3, but last result was 5')
+    expect(example).to raise_error 'expected to eventually equal 3, but last result was 5'
+  end
+
+  it 'Instructs when the block did not yield' do
+    example = -> { expect{sleep 10_000}.to eventually be_nil}
+
+    expect(example).to raise_error 'expected to eventually be nil, but last result was :block_never_yielded'
+  end
+
+  it 'Will display the last error if the block raised' do
+    example = -> { expect{raise 'MY ERROR MESSAGE'}.to eventually be 7}
+
+    expect(example).to raise_error(
+      'expected to eventually equal 7, but last result threw #<RuntimeError: MY ERROR MESSAGE>'
+    )
   end
 
   it 'Re-runs the block given if it throws an error' do
@@ -35,4 +49,18 @@ describe :eventually do
 
     expect(block).to eventually equal 3
   end
+
+end
+
+describe :eventually_not do
+
+  def eventually_not(matcher)
+    Eventually.new(matcher, timeout: 0.1) # Low timeout makes the spec faster!
+  end
+
+  it 'Passes when the matcher is eventually not satisfied' do
+    v = 0
+    expect {v += 1}.to eventually_not be < 5
+  end
+
 end
